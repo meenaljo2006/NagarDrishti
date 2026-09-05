@@ -1,0 +1,32 @@
+const jwt = require('jsonwebtoken');
+
+// Generate JWT token
+exports.generateToken = (user) => {
+  return jwt.sign(
+    { 
+      id: user._id,
+      email: user.email,
+      role: user.role || 'admin'
+    },
+    process.env.JWT_SECRET,
+    { expiresIn: '7d' }
+  );
+};
+
+// Verify JWT token
+exports.verifyToken = (token) => {
+  try {
+    return jwt.verify(token, process.env.JWT_SECRET);
+  } catch (error) {
+    return null;
+  }
+};
+
+// Decode token without verification
+exports.decodeToken = (token) => {
+  try {
+    return jwt.decode(token);
+  } catch (error) {
+    return null;
+  }
+};

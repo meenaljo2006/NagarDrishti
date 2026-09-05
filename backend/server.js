@@ -16,7 +16,8 @@ const errorHandler = require('./src/middleware/errorHandler');
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Connect to MongoDB
+// Connect to MongoDB with better error handling
+console.log('🔄 Connecting to MongoDB...');
 connectDB();
 
 // Middleware
@@ -34,8 +35,12 @@ app.get('/health', (req, res) => {
     timestamp: new Date().toISOString(),
     service: 'NagarDrishti Backend',
     version: '1.0.0',
+    mongodb: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected'
   });
 });
+
+// Import mongoose for health check
+const mongoose = require('mongoose');
 
 // WhatsApp Webhook (Twilio)
 app.post('/api/webhook/whatsapp', whatsappController.handleWhatsAppWebhook);
