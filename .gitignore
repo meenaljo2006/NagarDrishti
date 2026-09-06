@@ -1,4 +1,4 @@
-# 1. BACKEND (Node.js) 
+# 1. BACKEND (Node.js)
 
 # Dependencies
 backend/node_modules/
@@ -6,7 +6,7 @@ backend/package-lock.json
 backend/yarn.lock
 backend/pnpm-lock.yaml
 
-# Environment variables
+# Environment variables 
 backend/.env
 backend/.env.local
 backend/.env.development.local
@@ -42,7 +42,7 @@ ai-services/Scripts/
 ai-services/Lib/
 ai-services/include/
 
-# Python cache
+# Python cache 
 ai-services/__pycache__/
 ai-services/*.pyc
 ai-services/*.pyo
@@ -66,7 +66,12 @@ ai-services/models/*.pth
 ai-services/models/*.h5
 ai-services/models/*.onnx
 
-# 3. FRONTEND (React)
+# Environment variables
+ai-services/.env
+ai-services/.env.local
+ai-services/.env.*.local
+
+# 3. FRONTEND 
 
 # Dependencies
 frontend/node_modules/
@@ -80,12 +85,13 @@ frontend/dist/
 frontend/.next/
 frontend/out/
 
-# Environment files
+# Environment files 
 frontend/.env
 frontend/.env.local
 frontend/.env.development.local
 frontend/.env.test.local
 frontend/.env.production.local
+
 
 # 4. GENERAL
 
@@ -125,6 +131,7 @@ credentials.json
 *.dockerignore
 docker-compose.override.yml
 
+
 # 5. SPECIFIC TO THIS PROJECT
 
 # Uploaded files
@@ -144,6 +151,7 @@ public/uploads/
 # Test reports
 test-results/
 jest-output/
+
 
 # 6. GITHUB SPECIFIC
 
