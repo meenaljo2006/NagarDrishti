@@ -14,15 +14,15 @@ import uvicorn
 import base64
 from io import BytesIO
 from PIL import Image
+import requests
 
 # Add src to path
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 # Import models and services
-from models.yolo_model import YOLOModel
+from models.yolo_model import get_yolo_model, YOLOModel
 from models.nlp_model import NLPModel
 from services.image_service import ImageService
-from utils.categories import CATEGORIES
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
@@ -34,9 +34,9 @@ logger = logging.getLogger(__name__)
 
 logger.info("🔄 Loading AI Models...")
 
-# Initialize YOLO model (with fallback)
+# Initialize YOLO model
 try:
-    yolo_model = YOLOModel(confidence_threshold=0.5)
+    yolo_model = get_yolo_model()
     logger.info("✅ YOLO model initialized")
 except Exception as e:
     logger.warning(f"⚠️ YOLO model not available: {e}")
@@ -75,17 +75,13 @@ app.add_middleware(
 # Request/Response Models
 # ============================================
 
-class AnalyzeRequest(BaseModel):
-    imageUrl: str
-    description: str
-    location: Optional[dict] = None
-
 class AnalyzeResponse(BaseModel):
     isValid: bool
     category: str
     confidence: float
     severity: str
     descriptionAnalysis: dict
+    imageAnalysis: Optional[dict] = None
 
 class HealthResponse(BaseModel):
     status: str
@@ -109,7 +105,7 @@ async def health_check():
     }
 
 # ============================================
-# Analyze Endpoint
+# Main Analyze Endpoint (Image + Text)
 # ============================================
 
 @app.post("/analyze", response_model=AnalyzeResponse)
@@ -120,67 +116,72 @@ async def analyze_complaint(
 ):
     """
     Analyze complaint image and description
-    
-    Args:
-        imageUrl: URL of the image
-        description: Text description of the issue
-        location: Location coordinates (optional)
-    
-    Returns:
-        Analysis results with category, confidence, severity
     """
     try:
         logger.info(f"📥 Analyzing complaint: {description[:50]}...")
         
-        # Initialize results
+        # Default results
         category = 'other'
         confidence = 0.5
         severity = 'medium'
         is_valid = True
         description_analysis = {}
+        image_analysis = None
         
-        # Step 1: Analyze description with NLP
+        # Step 1: Analyze text with NLP
         if nlp_model:
             try:
                 text_result = nlp_model.analyze_text(description)
-                logger.info(f"📝 NLP Analysis: {text_result}")
+                description_analysis = text_result
                 
-                # Use NLP category if confidence is high
-                if text_result['category_confidence'] > 0.6:
+                if text_result.get('category_confidence', 0) > 0.5:
                     category = text_result['detected_category']
                     confidence = text_result['category_confidence']
-                    description_analysis = text_result
+                logger.info(f"📝 Text analysis: category={category}, confidence={confidence}")
             except Exception as e:
                 logger.warning(f"⚠️ NLP analysis failed: {e}")
         
         # Step 2: Analyze image with YOLO
         if yolo_model and imageUrl:
             try:
-                # Download image from URL
-                import requests
-                response = requests.get(imageUrl, timeout=10)
-                response.raise_for_status()
-                image_data = response.content
+                image_result = yolo_model.validate_image(imageUrl)
+                image_analysis = image_result
                 
-                # Run YOLO prediction
-                yolo_result = yolo_model.predict(image_data)
-                logger.info(f"🖼️ YOLO Analysis: {yolo_result}")
-                
-                if yolo_result['primary_detection']:
-                    # Map YOLO class to our categories
-                    yolo_class = yolo_result['primary_detection']['class_name']
-                    yolo_confidence = yolo_result['primary_detection']['confidence']
-                    
-                    # Check if class matches our categories
-                    for cat_name, cat_info in CATEGORIES.items():
-                        if yolo_class.lower() in cat_info['keywords']:
-                            category = cat_name
-                            confidence = max(confidence, yolo_confidence)
-                            break
+                if image_result.get('isValid'):
+                    # Use image category if confidence is high
+                    if image_result.get('confidence', 0) > confidence:
+                        category = image_result['category']
+                        confidence = image_result['confidence']
+                        severity = image_result.get('severity', severity)
+                    logger.info(f"🖼️ Image analysis: category={category}, confidence={confidence}")
+                else:
+                    logger.warning(f"⚠️ Image invalid: {image_result.get('reason')}")
+                    # If image is clearly invalid, reduce confidence
+                    if 'invalid object' in image_result.get('reason', '').lower():
+                        confidence = min(confidence, 0.4)
+                        
             except Exception as e:
                 logger.warning(f"⚠️ YOLO analysis failed: {e}")
         
-        # Step 3: Determine severity based on confidence and category
+        # Step 3: Cross-validation
+        if image_analysis and description_analysis:
+            image_category = image_analysis.get('category')
+            text_category = description_analysis.get('detected_category')
+            
+            if image_category and text_category and image_category == text_category:
+                # Both agree - boost confidence
+                confidence = min(confidence + 0.1, 0.98)
+                logger.info(f"✅ Cross-validation: Both agree on {image_category}")
+            elif image_category and text_category and image_category != text_category:
+                # Mismatch - flag for review
+                logger.warning(f"⚠️ Category mismatch: image={image_category}, text={text_category}")
+                confidence = min(confidence, 0.6)
+        
+        # Step 4: Determine final validity
+        if confidence < 0.4:
+            is_valid = False
+        
+        # Step 5: Determine severity
         if confidence > 0.8:
             severity = 'high'
         elif confidence > 0.6:
@@ -188,17 +189,14 @@ async def analyze_complaint(
         else:
             severity = 'low'
         
-        # Step 4: Final validation
-        if confidence < 0.3:
-            is_valid = False
-        
-        # Step 5: Prepare response
+        # Prepare response
         response = {
             'isValid': is_valid,
             'category': category,
             'confidence': round(confidence, 2),
             'severity': severity,
-            'descriptionAnalysis': description_analysis
+            'descriptionAnalysis': description_analysis,
+            'imageAnalysis': image_analysis
         }
         
         logger.info(f"✅ Analysis complete: {response}")
@@ -207,7 +205,6 @@ async def analyze_complaint(
     except Exception as e:
         logger.error(f"❌ Analysis error: {e}")
         
-        # Return fallback response
         return {
             'isValid': True,
             'category': 'other',
@@ -217,11 +214,12 @@ async def analyze_complaint(
                 'sentiment': 'neutral',
                 'keywords': [],
                 'wordCount': len(description.split())
-            }
+            },
+            'imageAnalysis': None
         }
 
 # ============================================
-# Direct Image Upload Endpoint
+# Image Upload Endpoint
 # ============================================
 
 @app.post("/analyze-image")
@@ -235,24 +233,15 @@ async def analyze_image(
     try:
         # Read image
         contents = await file.read()
-        image_data = contents
         
-        # Get image stats
-        image_stats = ImageService.process_image(image_data)
-        
-        # Analyze with YOLO if available
-        yolo_result = None
-        if yolo_model:
-            try:
-                yolo_result = yolo_model.predict(image_data)
-            except Exception as e:
-                logger.warning(f"⚠️ YOLO error: {e}")
+        # Analyze with YOLO
+        result = ImageService.analyze_image(contents)
         
         return {
             'success': True,
-            'image_stats': image_stats,
-            'yolo_result': yolo_result,
-            'description': description
+            'filename': file.filename,
+            'content_type': file.content_type,
+            'analysis': result
         }
         
     except Exception as e:
@@ -270,7 +259,13 @@ async def analyze_image(
 async def get_categories():
     """Get available categories"""
     return {
-        'categories': CATEGORIES
+        'categories': {
+            'pothole': {'department': 'roads', 'severity': 'high'},
+            'garbage': {'department': 'sanitation', 'severity': 'medium'},
+            'streetlight': {'department': 'electricity', 'severity': 'medium'},
+            'water_leakage': {'department': 'water', 'severity': 'high'},
+            'road_damage': {'department': 'roads', 'severity': 'high'},
+        }
     }
 
 # ============================================

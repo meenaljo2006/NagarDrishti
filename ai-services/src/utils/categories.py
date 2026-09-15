@@ -8,28 +8,28 @@ CATEGORIES = {
         'id': 0,
         'name': 'Pothole',
         'department': 'roads',
-        'keywords': ['pothole', 'crack', 'hole', 'road damage', 'broken road'],
+        'keywords': ['pothole', 'crack', 'hole', 'road damage', 'broken road', 'asphalt', 'craters'],
         'severity': 'high'
     },
     'garbage': {
         'id': 1,
         'name': 'Garbage',
         'department': 'sanitation',
-        'keywords': ['garbage', 'trash', 'waste', 'dump', 'litter'],
+        'keywords': ['garbage', 'trash', 'waste', 'dump', 'litter', 'rubbish'],
         'severity': 'medium'
     },
     'streetlight': {
         'id': 2,
         'name': 'Streetlight',
         'department': 'electricity',
-        'keywords': ['streetlight', 'light', 'lamp', 'dark', 'pole'],
+        'keywords': ['streetlight', 'light', 'lamp', 'dark', 'pole', 'illumination'],
         'severity': 'medium'
     },
     'water_leakage': {
         'id': 3,
         'name': 'Water Leakage',
         'department': 'water',
-        'keywords': ['water', 'leak', 'pipe', 'drain', 'flood'],
+        'keywords': ['water', 'leak', 'pipe', 'drain', 'flood', 'overflow'],
         'severity': 'high'
     },
     'road_damage': {

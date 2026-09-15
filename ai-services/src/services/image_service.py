@@ -2,119 +2,80 @@
 Image Processing Service
 """
 
+import sys
+import os
 import cv2
 import numpy as np
 from PIL import Image
 import io
 import base64
 import logging
+from typing import Dict, Union
+
+# Add src to path for imports
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from models.yolo_model import get_yolo_model
 
 logger = logging.getLogger(__name__)
 
 class ImageService:
-    """Service for processing and analyzing images"""
+    """Service for image analysis"""
     
     @staticmethod
-    def process_image(image_data):
+    def analyze_image(image_data: Union[str, bytes, np.ndarray]) -> Dict:
         """
-        Process image for analysis
+        Analyze image and return results
         
         Args:
-            image_data: Image data (bytes, base64, or path)
+            image_data: Image data
         
         Returns:
-            dict: Image analysis results
+            Analysis results
         """
         try:
-            # Preprocess image
-            image = ImageService._preprocess_image(image_data)
+            # Get YOLO model
+            yolo = get_yolo_model()
             
-            # Get image metadata
-            height, width = image.shape[:2]
-            total_pixels = height * width
+            # Validate image
+            result = yolo.validate_image(image_data)
             
-            # Check image quality
-            is_valid = ImageService._check_image_quality(image)
-            
-            # Get image stats
-            stats = {
-                'width': width,
-                'height': height,
-                'total_pixels': total_pixels,
-                'is_valid': is_valid,
-                'aspect_ratio': width / height
+            return {
+                'success': True,
+                'analysis': result
             }
             
-            return stats
-            
         except Exception as e:
-            logger.error(f"❌ Image processing error: {e}")
+            logger.error(f"❌ Image analysis error: {e}")
             return {
-                'is_valid': False,
+                'success': False,
                 'error': str(e)
             }
     
     @staticmethod
-    def _preprocess_image(image_data):
-        """Preprocess image for analysis"""
-        # If image is base64 string
-        if isinstance(image_data, str) and image_data.startswith('data:image'):
-            image_data = image_data.split(',')[1]
-            image_bytes = base64.b64decode(image_data)
-            image = Image.open(io.BytesIO(image_bytes))
-            return np.array(image)
-        
-        # If image is bytes
-        elif isinstance(image_data, bytes):
-            image = Image.open(io.BytesIO(image_data))
-            return np.array(image)
-        
-        # If image is file path
-        elif isinstance(image_data, str):
-            image = cv2.imread(image_data)
-            return cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-        
-        # If image is already numpy array
-        elif isinstance(image_data, np.ndarray):
-            return image_data
-        
-        else:
-            raise ValueError("Unsupported image format")
-    
-    @staticmethod
-    def _check_image_quality(image):
-        """
-        Check image quality
-        
-        Args:
-            image: Image as numpy array
-        
-        Returns:
-            bool: True if image quality is acceptable
-        """
+    def get_image_info(image_data: Union[str, bytes, np.ndarray]) -> Dict:
+        """Get basic image information"""
         try:
-            # Check if image is empty
-            if image is None or image.size == 0:
-                return False
+            # Load image
+            if isinstance(image_data, str):
+                if image_data.startswith('data:image'):
+                    image_data = base64.b64decode(image_data.split(',')[1])
+                elif image_data.startswith('http'):
+                    import requests
+                    response = requests.get(image_data, timeout=10)
+                    image_data = response.content
+                else:
+                    image_data = open(image_data, 'rb').read()
             
-            # Convert to grayscale
-            if len(image.shape) == 3:
-                gray = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
-            else:
-                gray = image
+            image = Image.open(io.BytesIO(image_data))
             
-            # Check brightness
-            mean_brightness = np.mean(gray)
-            if mean_brightness < 30 or mean_brightness > 250:
-                return False  # Too dark or too bright
-            
-            # Check contrast
-            std_brightness = np.std(gray)
-            if std_brightness < 10:
-                return False  # Low contrast
-            
-            return True
+            return {
+                'format': image.format,
+                'mode': image.mode,
+                'size': image.size,
+                'width': image.width,
+                'height': image.height
+            }
             
         except Exception as e:
-            logger.error(f"❌ Quality check error: {e}")
-            return False
+            return {'error': str(e)}

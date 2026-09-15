@@ -6,7 +6,13 @@ import torch
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
 import logging
 import re
-from ..utils.categories import CATEGORIES
+import sys
+import os
+
+# Add src to path for imports
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from utils.categories import CATEGORIES
 
 logger = logging.getLogger(__name__)
 
@@ -57,7 +63,7 @@ class NLPModel:
         words = text.split()
         
         # Remove stopwords
-        stopwords = {'the', 'a', 'an', 'of', 'for', 'on', 'at', 'to', 'in', 'with', 'by'}
+        stopwords = {'the', 'a', 'an', 'of', 'for', 'on', 'at', 'to', 'in', 'with', 'by', 'is', 'are', 'was', 'were'}
         keywords = [w for w in words if w not in stopwords and len(w) > 2]
         
         return keywords
@@ -73,13 +79,14 @@ class NLPModel:
             dict: Category detection results
         """
         keywords = self.extract_keywords(text)
+        text_lower = text.lower()
         
         # Count matches for each category
         category_scores = {}
         for category_name, info in CATEGORIES.items():
             score = 0
             for keyword in info['keywords']:
-                if keyword in text.lower():
+                if keyword in text_lower:
                     score += 1
             category_scores[category_name] = score
         
