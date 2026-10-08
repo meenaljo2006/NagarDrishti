@@ -1,6 +1,7 @@
 const Complaint = require('../models/Complaint');
 const { analyzeComplaint, getDepartmentForCategory, calculatePriority } = require('../services/aiService');
 const { sendWhatsAppMessage } = require('../services/whatsappService');
+const { reverseGeocode } = require('../utils/geocoder');
 
 // Create a new complaint
 exports.createComplaint = async (data) => {
@@ -10,7 +11,7 @@ exports.createComplaint = async (data) => {
     description,
     imageUrl,
     location,
-    address,
+    address: providedAddress,
     whatsappMessageSid,
   } = data;
 
@@ -25,6 +26,13 @@ exports.createComplaint = async (data) => {
     coordinates: [78.9629, 20.5937], 
   };
 
+  // Reverse geocode to get a human-readable address
+  let finalAddress = providedAddress;
+  if (!finalAddress || finalAddress === 'Location not provided') {
+    finalAddress = await reverseGeocode(safeLocation.coordinates);
+  }
+
+
   // Create the complaint
   const complaint = new Complaint({
     citizenName,
@@ -32,7 +40,7 @@ exports.createComplaint = async (data) => {
     description: description || 'No description provided',
     imageUrl,
     location: safeLocation,
-    address,
+    address: finalAddress,
     whatsappMessageSid,
     status: 'pending',
     statusHistory: [
