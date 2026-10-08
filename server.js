@@ -6,7 +6,6 @@ const morgan = require('morgan');
 const compression = require('compression');
 const connectDB = require('./src/config/database');
 
-// Initialize app
 const app = express();
 const PORT = process.env.PORT || 5000;
 
@@ -21,36 +20,50 @@ app.use(morgan('dev'));
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
-// Health check endpoint
+// Import routes
+const webhookRoutes = require('./src/routes/webhookRoutes');
+const complaintRoutes = require('./src/routes/complaintRoutes');
+
+// Health check
 app.get('/health', (req, res) => {
   res.json({
     status: 'OK',
     timestamp: new Date().toISOString(),
     service: 'NagarDrishti Backend',
-    version: '1.0.0',
   });
 });
 
-// Root endpoint
+// Root
 app.get('/', (req, res) => {
-  res.json({
-    message: 'NagarDrishti API',
-    tagline: 'See. Verify. Resolve.',
-    version: '1.0.0',
-  });
+  res.json({ message: 'NagarDrishti API', tagline: 'See. Verify. Resolve.' });
 });
 
-// 404 handler
+// Routes
+app.use('/api/webhook', webhookRoutes);
+app.use('/api', complaintRoutes);
+
+// 404
 app.use((req, res) => {
-  res.status(404).json({
-    success: false,
-    message: 'Route not found',
-  });
+  res.status(404).json({ success: false, message: 'Route not found' });
 });
 
-// Start server
-app.listen(PORT, () => {
+// Start server + ngrok
+app.listen(PORT, async () => {
   console.log(`NagarDrishti Backend running on port ${PORT}`);
-  console.log(`API URL: http://localhost:${PORT}`);
-  console.log(`Health Check: http://localhost:${PORT}/health`);
+  console.log(`API: http://localhost:${PORT}`);
+  console.log(`Health: http://localhost:${PORT}/health`);
+
+  // Start ngrok tunnel
+  try {
+    const ngrok = require('@ngrok/ngrok');
+    const listener = await ngrok.forward({
+      addr: PORT,
+      authtoken_from_env: true,
+    });
+    console.log(`\nPUBLIC WEBHOOK URL: ${listener.url()}/api/webhook/whatsapp\n`);
+    console.log('Copy this URL to Twilio Sandbox settings');
+  } catch (error) {
+    console.error('ngrok error:', error.message);
+    console.log('Server still running locally, but no public URL');
+  }
 });
