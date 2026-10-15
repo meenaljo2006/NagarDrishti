@@ -2,6 +2,7 @@ const Complaint = require('../models/Complaint');
 const { analyzeComplaint, getDepartmentForCategory, calculatePriority } = require('../services/aiService');
 const { sendWhatsAppMessage } = require('../services/whatsappService');
 const { reverseGeocode } = require('../utils/geocoder');
+const { uploadTwilioImageToCloudinary } = require('../services/cloudinaryService');
 
 // Create a new complaint
 exports.createComplaint = async (data) => {
@@ -38,7 +39,7 @@ exports.createComplaint = async (data) => {
     citizenName,
     citizenPhone,
     description: description || 'No description provided',
-    imageUrl,
+    imageUrl: cloudinaryUrl,
     location: safeLocation,
     address: finalAddress,
     whatsappMessageSid,

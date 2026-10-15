@@ -1,73 +1,39 @@
-/**
- * Simple rule-based AI for complaint analysis.
- * Will be replaced with real YOLOv8 + Hugging Face in Phase 4.
- */
+const axios = require('axios');
+
+const AI_SERVICE_URL = process.env.AI_SERVICE_URL || 'http://localhost:8000';
 
 exports.analyzeComplaint = async ({ description, imageUrl, location }) => {
-  const text = (description || '').toLowerCase();
+  try {
+    console.log('Calling AI service...');
 
-  // Category detection based on keywords
-  let category = 'other';
-  let confidence = 0.6;
+    // Call CLIP image classification
+    const imageResult = await axios.post(
+      `${AI_SERVICE_URL}/classify-image`,
+      { imageUrl },
+      { timeout: 30000 }
+    );
 
-  if (/(pothole|gaddha|hole|pit)/i.test(text)) {
-    category = 'pothole';
-    confidence = 0.85;
-  } else if (/(garbage|kuda|trash|waste|dump|kachra)/i.test(text)) {
-    category = 'garbage';
-    confidence = 0.85;
-  } else if (/(streetlight|light|bulb|lamp)/i.test(text)) {
-    category = 'streetlight';
-    confidence = 0.8;
-  } else if (/(water|leak|leakage|pipe|paani)/i.test(text)) {
-    category = 'water_leakage';
-    confidence = 0.8;
-  } else if (/(road|sadak|broken|damage|crater)/i.test(text)) {
-    category = 'road_damage';
-    confidence = 0.8;
+    // Call text analysis
+    const textResult = await axios.post(
+      `${AI_SERVICE_URL}/analyze-text`,
+      { description },
+      { timeout: 10000 }
+    );
+
+    // Combine results
+    const aiResult = {
+      isValid: imageResult.data.confidence > 0.3,
+      category: imageResult.data.category,
+      confidence: imageResult.data.confidence,
+      severity: textResult.data.severity,
+      descriptionAnalysis: {
+        keywords: textResult.data.keywords,
+      },
+    };
+
+    console.log('AI analysis:', aiResult);
+    return aiResult;
+  } catch (error) {
+    console.error('AI service error:', error.message);
   }
-
-  // Severity detection
-  let severity = 'medium';
-  if (/(urgent|emergency|dangerous|accident|serious|immediately)/i.test(text)) {
-    severity = 'high';
-  } else if (/(minor|small|little|not urgent)/i.test(text)) {
-    severity = 'low';
-  }
-
-  // If image is provided, boost confidence
-  if (imageUrl) {
-    confidence = Math.min(confidence + 0.1, 0.95);
-  }
-
-  return {
-    isValid: !!imageUrl, // Require image for validity
-    category,
-    confidence,
-    severity,
-    descriptionAnalysis: {
-      sentiment: 'negative',
-      keywords: text.split(' ').slice(0, 5),
-    },
-    isDuplicate: false,
-    duplicateOf: null,
-  };
-};
-
-// Map AI category to department
-exports.getDepartmentForCategory = (category) => {
-  const mapping = {
-    pothole: 'roads',
-    road_damage: 'roads',
-    garbage: 'sanitation',
-    streetlight: 'electricity',
-    water_leakage: 'water',
-  };
-  return mapping[category] || 'other';
-};
-
-// Calculate priority from severity
-exports.calculatePriority = (severity) => {
-  const mapping = { high: 5, medium: 3, low: 1 };
-  return mapping[severity] || 3;
 };
