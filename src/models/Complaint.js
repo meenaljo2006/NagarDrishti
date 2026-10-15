@@ -18,7 +18,7 @@ const complaintSchema = new mongoose.Schema(
     // === Quick-Access Category ===
     category: {
       type: String,
-      enum: ['pothole', 'garbage', 'streetlight', 'water_leakage', 'road_damage', 'other'],
+      enum: ['pothole', 'garbage','water_leakage','other'],
       default: 'other',
       index: true,
     },

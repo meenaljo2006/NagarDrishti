@@ -18,15 +18,12 @@ const analyticsSchema = new mongoose.Schema(
     byCategory: {
       pothole: { type: Number, default: 0 },
       garbage: { type: Number, default: 0 },
-      streetlight: { type: Number, default: 0 },
       water_leakage: { type: Number, default: 0 },
-      road_damage: { type: Number, default: 0 },
       other: { type: Number, default: 0 },
     },
     byDepartment: {
       roads: { type: Number, default: 0 },
       sanitation: { type: Number, default: 0 },
-      electricity: { type: Number, default: 0 },
       water: { type: Number, default: 0 },
       other: { type: Number, default: 0 },
     },

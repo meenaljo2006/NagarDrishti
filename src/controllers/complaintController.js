@@ -129,12 +129,11 @@ async function processAI(complaintId) {
     }
   } catch (error) {
     console.error('AI processing error:', error);
-
-    // Mark for manual review
+    complaint.status = 'rejected';
     complaint.statusHistory.push({
-      status: 'pending',
+      status: 'rejected',
       timestamp: new Date(),
-      note: 'AI failed. Marked for manual review.',
+      note: `AI verification failed: ${error.message}`,
     });
     await complaint.save();
   }
