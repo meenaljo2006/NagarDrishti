@@ -33,6 +33,14 @@ exports.createComplaint = async (data) => {
     finalAddress = await reverseGeocode(safeLocation.coordinates);
   }
 
+  // Upload Twilio image to Cloudinary
+  let cloudinaryUrl = imageUrl;
+  if (imageUrl && imageUrl.includes('api.twilio.com')) {
+    console.log('Uploading Twilio image to Cloudinary...');
+    cloudinaryUrl = await uploadTwilioImageToCloudinary(imageUrl);
+    console.log('Cloudinary URL:', cloudinaryUrl);
+  }
+
 
   // Create the complaint
   const complaint = new Complaint({
@@ -93,7 +101,7 @@ async function processAI(complaintId) {
       duplicateOf: null,
     };
 
-    if (aiResult.isValid && aiResult.confidence >= 0.7) {
+    if (aiResult.isValid && aiResult.confidence >= 0.5) {
       // Verified
       complaint.status = 'verified';
       complaint.department = getDepartmentForCategory(aiResult.category);
