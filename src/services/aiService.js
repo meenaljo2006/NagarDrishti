@@ -3,46 +3,40 @@ const axios = require('axios');
 const AI_SERVICE_URL = process.env.AI_SERVICE_URL || 'http://localhost:8000';
 
 /**
- * Call Python AI service to analyze complaint.
- * NO fallback — if AI fails, complaint fails.
+ * Call Python AI service to fully analyze a complaint.
+ * Returns category, severity, keywords, validity.
+ * No fallback — if AI fails, complaint fails.
  */
 exports.analyzeComplaint = async ({ description, imageUrl, location }) => {
   try {
     console.log('Calling AI service...');
 
-    // 1. Image classification (CLIP)
-    const imageResponse = await axios.post(
-      `${AI_SERVICE_URL}/classify-image`,
-      { imageUrl },
-      { timeout: 30000 }
+    const response = await axios.post(
+      `${AI_SERVICE_URL}/analyze`,
+      { imageUrl, description },
+      { timeout: 60000 }
     );
 
-    // 2. Text analysis
-    const textResponse = await axios.post(
-      `${AI_SERVICE_URL}/analyze-text`,
-      { description },
-      { timeout: 10000 }
-    );
+    const data = response.data;
 
-    const imageResult = imageResponse.data;
-    const textResult = textResponse.data;
+    console.log(`Category: ${data.category} | Severity: ${data.severity} | Valid: ${data.isValid}`);
 
-    console.log(`CLIP: ${imageResult.category} (${imageResult.confidence})`);
-
-    // 3. Combine results
-    const aiResult = {
-      isValid: imageResult.confidence > 0.3,
-      category: imageResult.category,
-      confidence: imageResult.confidence,
-      severity: textResult.severity,
+    // Map Python response to Node.js schema
+    return {
+      isValid: data.isValid,
+      category: data.category,
+      confidence: data.imageConfidence,
+      severity: data.severity,
       descriptionAnalysis: {
-        sentiment: 'neutral',
-        keywords: textResult.keywords,
+        sentiment: data.sentiment,
+        keywords: data.keywords,
       },
+      // Extra fields for analytics/future use
+      severityScore: data.severityScore,
+      imageScores: data.imageScores,
+      textCategory: data.textCategory,
+      urgencyScore: data.urgencyScore,
     };
-
-    console.log('AI analysis complete');
-    return aiResult;
   } catch (error) {
     console.error('AI service error:', error.message);
     throw new Error(`AI analysis failed: ${error.message}`);
