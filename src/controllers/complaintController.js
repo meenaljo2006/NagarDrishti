@@ -101,7 +101,7 @@ async function processAI(complaintId) {
       duplicateOf: null,
     };
 
-    if (aiResult.isValid && aiResult.confidence >= 0.5) {
+    if (aiResult.isValid && aiResult.confidence >= 0.4) {
       // Verified
       complaint.status = 'verified';
       complaint.department = getDepartmentForCategory(aiResult.category);
