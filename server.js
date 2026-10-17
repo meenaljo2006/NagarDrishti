@@ -5,6 +5,8 @@ const helmet = require('helmet');
 const morgan = require('morgan');
 const compression = require('compression');
 const connectDB = require('./src/config/database');
+const authRoutes = require('./src/routes/authRoutes');
+
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -41,6 +43,7 @@ app.get('/', (req, res) => {
 // Routes
 app.use('/api/webhook', webhookRoutes);
 app.use('/api', complaintRoutes);
+app.use('/api/auth', authRoutes);
 
 // 404
 app.use((req, res) => {
