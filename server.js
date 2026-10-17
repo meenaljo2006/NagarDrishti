@@ -6,7 +6,7 @@ const morgan = require('morgan');
 const compression = require('compression');
 const connectDB = require('./src/config/database');
 const authRoutes = require('./src/routes/authRoutes');
-
+const adminRoutes = require('./src/routes/adminRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -44,6 +44,7 @@ app.get('/', (req, res) => {
 app.use('/api/webhook', webhookRoutes);
 app.use('/api', complaintRoutes);
 app.use('/api/auth', authRoutes);
+app.use('/api/admin', adminRoutes);
 
 // 404
 app.use((req, res) => {

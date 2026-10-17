@@ -54,7 +54,24 @@ const complaintSchema = new mongoose.Schema(
       default: null,
       index: true,
     },
-    assignedTo: { type: String, default: null },
+    assignedTo: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      default: null,
+    },
+    beforeImage: {
+      type: String,
+      default: null,
+    },
+    afterImage: {
+      type: String,
+      default: null,
+    },
+    workNote: {
+      type: String,
+      default: null,
+    },
+    
     priority: { type: Number, min: 1, max: 5, default: 3 },
 
     // === Timestamps ===
