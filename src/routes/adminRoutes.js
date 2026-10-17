@@ -9,5 +9,6 @@ router.use(restrictTo('dept_admin', 'super_admin'));
 
 router.get('/complaints', adminController.getDeptComplaints);
 router.put('/complaints/:id/assign', adminController.assignComplaint);
+router.put('/complaints/:id/close', adminController.closeComplaint);
 
 module.exports = router;

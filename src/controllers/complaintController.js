@@ -102,6 +102,7 @@ async function processAI(complaintId) {
     });
 
     // Update complaint with AI results
+    complaint.category = aiResult.category;
     complaint.aiAnalysis = {
       isValid: aiResult.isValid,
       category: aiResult.category,

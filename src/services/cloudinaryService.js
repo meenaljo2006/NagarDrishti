@@ -48,3 +48,23 @@ exports.uploadTwilioImageToCloudinary = async (twilioUrl, complaintId) => {
     throw error; 
   }
 };
+
+/**
+ * Upload a file buffer directly to Cloudinary (for field team photo uploads)
+ */
+exports.uploadBufferToCloudinary = async (fileBuffer, folder = 'nagardrishti/proofs') => {
+  return new Promise((resolve, reject) => {
+    const uploadStream = cloudinary.uploader.upload_stream(
+      { folder: folder, resource_type: 'image' },
+      (error, result) => {
+        if (error) {
+          console.error('Cloudinary buffer upload error:', error);
+          reject(error);
+        } else {
+          resolve(result.secure_url);
+        }
+      }
+    );
+    uploadStream.end(fileBuffer);
+  });
+};

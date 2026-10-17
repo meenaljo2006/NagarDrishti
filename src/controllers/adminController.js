@@ -73,3 +73,65 @@ exports.getDeptComplaints = async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 };
+
+// @desc    Verify field work and close complaint
+// @route   PUT /api/admin/complaints/:id/close
+// @access  Private (Dept Admin, Super Admin)
+exports.closeComplaint = async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    // Find the original complaint
+    const complaint = await Complaint.findById(id);
+    if (!complaint) {
+      return res.status(404).json({ success: false, message: 'Complaint not found' });
+    }
+
+    // Ensure it's in 'resolved' state
+    if (complaint.status !== 'resolved') {
+      return res.status(400).json({ success: false, message: 'Complaint is not resolved yet' });
+    }
+
+    // 1. Update status to closed
+    complaint.status = 'closed';
+    complaint.resolvedAt = new Date();
+    complaint.resolvedBy = req.user.name; // Save the Admin's name who closed it
+    complaint.resolutionNote = req.body.adminNote || 'Verified and closed by admin.';
+
+    complaint.statusHistory.push({
+      status: 'closed',
+      timestamp: new Date(),
+      note: 'Admin verified the proof and closed the complaint.',
+    });
+
+    await complaint.save();
+
+    // 2. Notify the ORIGINAL reporter
+    await sendWhatsAppMessage(
+      complaint.citizenPhone,
+      `*Complaint Resolved & Closed*\n━━━━━━━━━━━━━━━━\nID: ${complaint._id}\n\nGood news! Your complaint has been officially RESOLVED.\n\nProof: ${complaint.afterImage}\nNote: ${complaint.workNote}\n\nThank you for helping make our city better!\n\nPlease rate our service (1-5).`
+    );
+
+    // 3. CASCADE NOTIFICATION: Notify all DUPLICATE reporters
+    const duplicates = await Complaint.find({ 'aiAnalysis.duplicateOf': complaint._id });
+    
+    if (duplicates.length > 0) {
+      console.log(`Sending resolution updates to ${duplicates.length} duplicate reporters...`);
+      
+      for (const dup of duplicates) {
+        await sendWhatsAppMessage(
+          dup.citizenPhone,
+          `*Update on your reported issue*\n━━━━━━━━━━━━━━━━\nThe issue you reported (linked to original ID: ${complaint._id}) has been officially RESOLVED.\n\nThank you for your patience!`
+        );
+      }
+    }
+
+    res.json({
+      success: true,
+      message: 'Complaint closed successfully. Citizens notified.',
+      data: complaint,
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
