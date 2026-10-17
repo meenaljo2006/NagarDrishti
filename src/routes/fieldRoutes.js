@@ -16,5 +16,6 @@ router.use(restrictTo('field_worker'));
 
 router.put('/complaints/:id/start', upload.single('beforeImage'), fieldController.startWork);
 router.put('/complaints/:id/resolve', upload.single('afterImage'), fieldController.resolveComplaint);
+router.get('/my-tasks', fieldController.getMyTasks);
 
 module.exports = router;

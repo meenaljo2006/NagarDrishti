@@ -103,3 +103,20 @@ exports.resolveComplaint = async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 };
+
+// @desc    Get tasks assigned to the logged-in field worker
+// @route   GET /api/field/my-tasks
+// @access  Private (Field Worker)
+exports.getMyTasks = async (req, res) => {
+  try {
+    // Find complaints assigned to this worker that are not yet closed
+    const tasks = await Complaint.find({
+      assignedTo: req.user.id,
+      status: { $in: ['assigned', 'in_progress', 'resolved'] }
+    }).sort({ priority: -1, reportedAt: -1 }); // High priority first
+
+    res.json({ success: true, data: tasks });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
