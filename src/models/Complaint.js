@@ -44,7 +44,7 @@ const complaintSchema = new mongoose.Schema(
     // === Lifecycle ===
     status: {
       type: String,
-      enum: ['pending', 'verified', 'rejected', 'assigned', 'in_progress', 'resolved', 'closed'],
+      enum: ['pending', 'verified', 'rejected', 'duplicate','assigned', 'in_progress', 'resolved', 'closed'],
       default: 'pending',
       index: true,
     },
@@ -62,6 +62,18 @@ const complaintSchema = new mongoose.Schema(
     resolvedAt: { type: Date, default: null },
     resolvedBy: { type: String, default: null },
     resolutionNote: { type: String, default: null },
+
+    // === Duplicate tracking ===
+    duplicateCount: {
+      type: Number,
+      default: 0,
+    },
+    duplicateReports: [
+      {
+        complaintId: { type: mongoose.Schema.Types.ObjectId, ref: 'Complaint' },
+        reportedAt: { type: Date, default: Date.now },
+      },
+    ],
 
     // === Audit Trail ===
     statusHistory: [

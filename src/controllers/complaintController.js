@@ -3,6 +3,7 @@ const { analyzeComplaint, getDepartmentForCategory, calculatePriority } = requir
 const { sendWhatsAppMessage } = require('../services/whatsappService');
 const { reverseGeocode } = require('../utils/geocoder');
 const { uploadTwilioImageToCloudinary } = require('../services/cloudinaryService');
+const { findDuplicate, markAsDuplicate } = require('../services/duplicateService');
 
 // Create a new complaint
 exports.createComplaint = async (data) => {
@@ -62,12 +63,12 @@ exports.createComplaint = async (data) => {
   });
 
   await complaint.save();
-  console.log(`Complaint created: ${complaint._id}`);
+  console.log(`📝 Complaint created: ${complaint._id}`);
 
   // Send acknowledgment to citizen
   await sendWhatsAppMessage(
     citizenPhone,
-    `*NagarDrishti*\n_See. Verify. Resolve._\n\n Complaint Received!\n━━━━━━━━━━━━━━━━\n ID: ${complaint._id}\n Status: Under AI Verification\n We'll update you shortly.`
+    `*NagarDrishti*\n_See. Verify. Resolve._\n\nComplaint Registered!\n━━━━━━━━━━━━━━━━\nID: ${complaint._id}\nStatus: Under AI Verification\nWe'll update you shortly.`
   );
 
   // Trigger AI analysis asynchronously
@@ -76,6 +77,7 @@ exports.createComplaint = async (data) => {
   );
 
   return complaint;
+  
 };
 
 
@@ -102,7 +104,26 @@ async function processAI(complaintId) {
     };
 
     if (aiResult.isValid && aiResult.confidence >= 0.4) {
-      // Verified
+      // Check for duplicates BEFORE marking as verified
+      const duplicate = await findDuplicate({
+        category: aiResult.category,
+        coordinates: complaint.location.coordinates,
+      });
+
+      if (duplicate) {
+        // Found duplicate — mark this one
+        await markAsDuplicate(complaint, duplicate._id);
+        console.log(`Marked as duplicate of ${duplicate._id}`);
+
+        // Notify citizen
+        await sendWhatsAppMessage(
+          complaint.citizenPhone,
+          `*Duplicate Complaint*\n━━━━━━━━━━━━━━━━\nID: ${complaint._id}\n\nA similar complaint was already reported nearby (ID: ${duplicate._id}).\n\nYour report has been linked to it. We'll notify you when it's resolved.`
+        );
+        return;
+      }
+
+      // No duplicate — proceed as verified
       complaint.status = 'verified';
       complaint.department = getDepartmentForCategory(aiResult.category);
       complaint.priority = calculatePriority(aiResult.severity);
@@ -114,10 +135,9 @@ async function processAI(complaintId) {
 
       await complaint.save();
 
-      // Notify citizen
       await sendWhatsAppMessage(
         complaint.citizenPhone,
-        `*Complaint Verified!*\n━━━━━━━━━━━━━━━━\n ID: ${complaint._id}\n Category: ${aiResult.category}\n Severity: ${aiResult.severity}\n Routed to: ${complaint.department} dept\n Priority: ${complaint.priority}/5\n\nWe'll update you on progress.`
+        `*Complaint Verified!*\n━━━━━━━━━━━━━━━━\nID: ${complaint._id}\nCategory: ${aiResult.category}\nSeverity: ${aiResult.severity}\nRouted to: ${complaint.department} dept\nPriority: ${complaint.priority}/5\n\nWe'll update you on progress.`
       );
     } else {
       // Rejected
@@ -132,11 +152,11 @@ async function processAI(complaintId) {
 
       await sendWhatsAppMessage(
         complaint.citizenPhone,
-        `*Complaint Could Not Be Verified*\n━━━━━━━━━━━━━━━━\nPlease resubmit with:\n Clear photo\n Accurate location\n Specific description`
+        `*Complaint Could Not Be Verified*\n━━━━━━━━━━━━━━━━\nPlease resubmit with:\nClear photo\nAccurate location\nSpecific description`
       );
     }
   } catch (error) {
-    console.error('AI processing error:', error);
+    console.error('AI processing error:', error.message);
     complaint.status = 'rejected';
     complaint.statusHistory.push({
       status: 'rejected',
