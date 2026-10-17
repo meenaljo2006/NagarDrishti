@@ -121,3 +121,39 @@ exports.getHeatmapData = async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 };
+
+// @desc    Get complaints trend for the last 7 days
+// @route   GET /api/analytics/trends
+// @access  Private (Super Admin, Dept Admin)
+exports.getTrends = async (req, res) => {
+  try {
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+    const matchFilter = { reportedAt: { $gte: sevenDaysAgo } };
+    if (req.user.role === 'dept_admin') {
+      matchFilter.department = req.user.department;
+    }
+
+    const trends = await Complaint.aggregate([
+      { $match: matchFilter },
+      {
+        $group: {
+          _id: { $dateToString: { format: "%Y-%m-%d", date: "$reportedAt" } },
+          count: { $sum: 1 }
+        }
+      },
+      { $sort: { _id: 1 } } // Sort by date ascending
+    ]);
+
+    // Format for charting libraries like Recharts/Chart.js
+    const formattedData = trends.map(item => ({
+      date: item._id,
+      complaints: item.count
+    }));
+
+    res.json({ success: true, data: formattedData });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};

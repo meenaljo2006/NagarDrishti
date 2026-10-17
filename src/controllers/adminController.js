@@ -135,3 +135,88 @@ exports.closeComplaint = async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 };
+
+// @desc    Get all users (Super Admin only)
+// @route   GET /api/admin/users
+exports.getAllUsers = async (req, res) => {
+  try {
+    const users = await User.find().select('-password'); // Exclude passwords
+    res.json({ success: true, count: users.length, data: users });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// @desc    Create a new user (Super Admin only)
+// @route   POST /api/admin/users
+exports.createUser = async (req, res) => {
+  try {
+    const { name, email, phone, password, role, department, zone } = req.body;
+
+    const userExists = await User.findOne({ email });
+    if (userExists) {
+      return res.status(400).json({ success: false, message: 'User already exists' });
+    }
+
+    const user = await User.create({
+      name, email, phone, password, role, department, zone
+    });
+
+    res.status(201).json({
+      success: true,
+      data: { _id: user._id, name: user.name, email: user.email, role: user.role }
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// @desc    Get all field workers for the Dept Admin's department
+// @route   GET /api/admin/field-team
+exports.getFieldTeam = async (req, res) => {
+  try {
+    // Find workers in the same department as the logged-in admin
+    const workers = await User.find({ 
+      role: 'field_worker', 
+      department: req.user.department 
+    }).select('name zone phone');
+
+    res.json({ success: true, count: workers.length, data: workers });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// @desc    Reject a verified complaint manually
+// @route   PUT /api/admin/complaints/:id/reject
+exports.rejectComplaint = async (req, res) => {
+  try {
+    const complaint = await Complaint.findById(req.params.id);
+    if (!complaint) {
+      return res.status(404).json({ success: false, message: 'Complaint not found' });
+    }
+
+    if (['closed', 'rejected', 'resolved'].includes(complaint.status)) {
+       return res.status(400).json({ success: false, message: 'Cannot reject a completed complaint' });
+    }
+
+    complaint.status = 'rejected';
+    complaint.statusHistory.push({
+      status: 'rejected',
+      timestamp: new Date(),
+      note: `Rejected by Admin. Reason: ${req.body.reason || 'Invalid complaint'}`
+    });
+
+    await complaint.save();
+
+    // Notify Citizen
+    await sendWhatsAppMessage(
+      complaint.citizenPhone,
+      `*Complaint Rejected*\n━━━━━━━━━━━━━━━━\nID: ${complaint._id}\nYour complaint was reviewed by the department and rejected.\n\nReason: ${req.body.reason || 'Does not meet criteria'}`
+    );
+
+    res.json({ success: true, message: 'Complaint rejected', data: complaint });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};

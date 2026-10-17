@@ -8,5 +8,6 @@ router.use(protect);
 router.get('/super-admin', restrictTo('super_admin'), analyticsController.getSuperAdminStats);
 router.get('/dept-admin', restrictTo('dept_admin'), analyticsController.getDeptAdminStats);
 router.get('/heatmap', restrictTo('super_admin', 'dept_admin'), analyticsController.getHeatmapData);
+router.get('/trends', restrictTo('super_admin', 'dept_admin'), analyticsController.getTrends);
 
 module.exports = router;

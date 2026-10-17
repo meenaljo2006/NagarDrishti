@@ -10,11 +10,16 @@ const adminRoutes = require('./src/routes/adminRoutes');
 const fieldRoutes = require('./src/routes/fieldRoutes');
 const analyticsRoutes = require('./src/routes/analyticsRoutes');
 
+const swaggerUi = require('swagger-ui-express');
+const swaggerDocument = require('./swagger-output.json');
+
 const app = express();
 const PORT = process.env.PORT || 5000;
 
 // Connect to MongoDB
 connectDB();
+
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
 // Middleware
 app.use(helmet());
