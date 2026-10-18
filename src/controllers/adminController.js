@@ -147,24 +147,37 @@ exports.getAllUsers = async (req, res) => {
   }
 };
 
-// @desc    Create a new user (Super Admin only)
+// @desc    Create a new user (Super Admin creates Admins, Dept Admin creates Workers)
 // @route   POST /api/admin/users
 exports.createUser = async (req, res) => {
   try {
     const { name, email, phone, password, role, department, zone } = req.body;
 
+    // 1. Check if user already exists
     const userExists = await User.findOne({ email });
     if (userExists) {
       return res.status(400).json({ success: false, message: 'User already exists' });
     }
 
+    // 2. Role-based Access Control
+    if (req.user.role === 'dept_admin') {
+      // Dept Admins can ONLY create field workers for THEIR department
+      if (role !== 'field_worker') {
+        return res.status(403).json({ success: false, message: 'Dept Admins can only create Field Workers' });
+      }
+      if (department !== req.user.department) {
+        return res.status(403).json({ success: false, message: 'You can only create workers for your own department' });
+      }
+    }
+
+    // 3. Create the user
     const user = await User.create({
       name, email, phone, password, role, department, zone
     });
 
     res.status(201).json({
       success: true,
-      data: { _id: user._id, name: user.name, email: user.email, role: user.role }
+      data: { _id: user._id, name: user.name, email: user.email, role: user.role, department: user.department }
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });

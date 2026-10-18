@@ -6,10 +6,8 @@ const { protect, restrictTo } = require('../middleware/authMiddleware');
 // All routes here require login
 router.use(protect);
 
-// Super Admin Only routes
-router.route('/users')
-  .get(restrictTo('super_admin'), adminController.getAllUsers)
-  .post(restrictTo('super_admin'), adminController.createUser);
+router.get('/users', restrictTo('super_admin'), adminController.getAllUsers);
+router.post('/users', restrictTo('super_admin', 'dept_admin'), adminController.createUser);
 
 // Dept Admin & Super Admin routes
 router.use(restrictTo('dept_admin', 'super_admin'));

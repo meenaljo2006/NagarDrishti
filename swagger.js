@@ -8,18 +8,18 @@ const doc = {
   },
   host: 'localhost:5000',
   schemes: ['http'],
-  securityDefinitions: {
-    Bearer: {
-      type: 'apiKey',
-      name: 'Authorization',
-      in: 'header',
-      description: 'Enter your JWT token as: Bearer <token>',
-    },
-  },
+  components: {
+    securitySchemes: {
+      bearerAuth: {
+        type: 'http',
+        scheme: 'bearer',
+        bearerFormat: 'JWT',
+      }
+    }
+  }
 };
 
 const outputFile = './swagger-output.json';
-const endpointsFiles = ['./server.js']; // It will scan server.js and all imported routes
+const endpointsFiles = ['./server.js'];
 
-// Generate the swagger-output.json file
 swaggerAutogen(outputFile, endpointsFiles, doc);
