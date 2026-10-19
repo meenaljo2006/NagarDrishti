@@ -92,6 +92,6 @@ By leveraging intelligent automation and analytics, NagarDrishti aims to:
 ## 📚 Related Documentation
 
 -   [System architecture](./docs/system-architecture.md)
--   [Backend API Documnetation](./docs/api.md)
+-   [Backend API Documentation](./docs/api.md)
 -   [AI service README](../ai_service/README.md)
 
