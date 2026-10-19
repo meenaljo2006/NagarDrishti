@@ -213,11 +213,13 @@ exports.rejectComplaint = async (req, res) => {
        return res.status(400).json({ success: false, message: 'Cannot reject a completed complaint' });
     }
 
+    const reason = req.body && req.body.reason ? req.body.reason : 'Invalid or unclear complaint';
+
     complaint.status = 'rejected';
     complaint.statusHistory.push({
       status: 'rejected',
       timestamp: new Date(),
-      note: `Rejected by Admin. Reason: ${req.body.reason || 'Invalid complaint'}`
+      note: `Rejected by Admin. Reason: ${reason || 'Invalid complaint'}`
     });
 
     await complaint.save();
