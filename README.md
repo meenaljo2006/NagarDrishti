@@ -8,7 +8,7 @@ Municipal authorities receive thousands of citizen complaints regarding civic in
 **NagarDrishti** (City Vision) is an intelligent civic infrastructure management platform designed to solve this. It enables citizens to report issues conveniently through **WhatsApp** simply by sharing a photograph, an optional description, and their live location.
 
 Instead of directly generating a blind complaint, every report passes through an **AI-driven verification pipeline**:
-1. **Computer Vision (YOLOv8):** Validates the image to ensure it is relevant and categorizes the reported issue.
+1. **Computer Vision (Clip Model):** Validates the image to ensure it is relevant and categorizes the reported issue.
 2. **Natural Language Processing (NLP):** Analyzes the accompanying description for context and sentiment.
 3. **Duplicate Detection:** Checks against historical and active data to identify if the issue has already been reported.
 4. **Severity Assessment:** Assigns a priority/urgency level before automatically routing the issue to the appropriate municipal department.
@@ -26,16 +26,60 @@ Beyond complaint registration, NagarDrishti incorporates an **AI-Powered Decisio
 * **📊 Decision Support Dashboard:** Provides authorities with interactive visual insights, predictive maintenance suggestions, and high-risk area detection.
 
 
-## 🛠️ Technical Architecture & Stack
+## 🛠️ Technical Stack
+NagarDrishti follows a microservices-based architecture that separates core backend operations from AI-powered image classification and text analysis.
 
-The project follows a polyglot microservices architecture, separating the core backend operations from heavy AI inference tasks.
+| Component | Technologies | Purpose |
+|---|---|---|
+| **Frontend** | React.js, Tailwind CSS | Interactive municipal dashboard for complaint management, status tracking, and analytics. |
+| **Backend Core** | Node.js, Express.js | REST API development, authentication, complaint management, role-based workflows, and WhatsApp webhook handling. |
+| **Database** | MongoDB | Stores complaint records and application data. |
+| **AI Microservice** | Python, FastAPI | Provides API endpoints for AI-powered image classification and text analysis. |
+| **Computer Vision** | Hugging Face CLIP, Pillow (PIL), Requests | Classifies complaint images into categories such as potholes, garbage, water leakage, and other civic issues. |
+| **NLP & Text Analysis** | Hugging Face Transformers, DistilBERT | Analyzes complaint descriptions, performs sentiment analysis, categorizes issues using zero-shot classification, and estimates urgency. |
+| **WhatsApp Integration** | Twilio WhatsApp API | Supports citizen complaint submission through WhatsApp. |
+| **Image Storage** | Cloudinary | Stores complaint images and supports image management. |
+| **API Documentation & Testing** | Swagger UI, Postman | Documents, tests, and validates API endpoints. |
 
-* **Frontend:** React.js, Tailwind CSS (Interactive municipal dashboard)
-* **Backend Core:** Node.js, Express.js (REST APIs, routing, webhook handling)
-* **Database:** MongoDB (Geospatial queries, complaint storage)
-* **AI Microservices:** Python, FastAPI (Model inference services)
-* **Machine Learning:** YOLOv8 + OpenCV (Computer Vision), Hugging Face Transformers (NLP)
-* **Integrations:** Twilio (WhatsApp Business API integration)
+## 📋 Prerequisites
+
+-   Node.js v18+ and npm.
+-   MongoDB connection string.
+-   Twilio credentials if testing WhatsApp integration.
+-   Cloudinary credentials if using image storage.
+-   Python AI service running if the backend calls it.
+
+## ⚙️ Installation
+
+1. Clone the Repository
+``` bash
+git clone https://github.com/meenaljo2006/NagarDrishti.git
+```
+2. Install the backend dependencies
+``` bash
+npm install
+```
+3. Then Create `.env` using `.env.example`. All values are placeholders. Never commit real secrets.
+
+4. Database Seeding - The setup mention example Super Admin, Roads Department Admin, and
+Field Worker accounts, with a sample password `password123`.
+``` bash
+node seed.js
+```
+ 
+## 🚀 Running the Server
+``` bash
+npm run dev
+```
+
+-   Example base URL: `http://localhost:5000`
+-   Swagger UI: `http://localhost:5000/api-docs`
+
+## 🤖 AI Service Integration
+
+The supplied configuration uses `AI_SERVICE_URL=http://localhost:8000`.
+The AI service exposes `GET /health`, `POST /classify-image`,
+`POST /analyze-text`, and `POST /analyze`. 
 
 ## 🎯 Impact
 
@@ -44,3 +88,10 @@ By leveraging intelligent automation and analytics, NagarDrishti aims to:
 * **Improve complaint authenticity and data quality**
 * **Accelerate response and resolution times**
 * **Promote smarter, data-driven civic infrastructure management**
+
+## 📚 Related Documentation
+
+-   [System architecture](./docs/system-architecture.md)
+-   [Backend API notes](./docs/api.md)
+-   [AI service README](../ai_service/README.md)
+
