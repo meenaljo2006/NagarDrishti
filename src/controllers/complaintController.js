@@ -208,6 +208,7 @@ exports.getComplaints = async (req, res) => {
     if (department) filter.department = department;
 
     const complaints = await Complaint.find(filter)
+      .populate('assignedTo', 'name zone')
       .sort({ reportedAt: -1 })
       .skip((page - 1) * limit)
       .limit(parseInt(limit));

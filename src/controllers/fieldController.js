@@ -112,7 +112,7 @@ exports.getMyTasks = async (req, res) => {
     // Find complaints assigned to this worker that are not yet closed
     const tasks = await Complaint.find({
       assignedTo: req.user.id,
-      status: { $in: ['assigned', 'in_progress', 'resolved'] }
+      status: { $in: ['assigned', 'in_progress', 'resolved','closed'] }
     }).sort({ priority: -1, reportedAt: -1 }); // High priority first
 
     res.json({ success: true, data: tasks });
