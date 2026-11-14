@@ -61,8 +61,7 @@ exports.getDeptComplaints = async (req, res) => {
     // If Super Admin, get all. If Dept Admin, get only their department.
     const filter = req.user.role === 'super_admin' ? {} : { department: req.user.department };
     
-    // We exclude resolved/closed for the active dashboard
-    filter.status = { $in: ['verified', 'assigned', 'in_progress','closed'] };
+    filter.status = { $in: ['verified', 'assigned', 'in_progress','closed','resolved'] };
 
     const complaints = await Complaint.find(filter)
       .populate('assignedTo', 'name zone phone')
