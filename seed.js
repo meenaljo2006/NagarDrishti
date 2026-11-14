@@ -3,7 +3,42 @@ const mongoose = require('mongoose');
 const User = require('./src/models/User');
 const Complaint = require('./src/models/Complaint');
 
-// Realistic Locations in Delhi NCR
+// 1. VERIFIED & RELIABLE CIVIC ISSUE IMAGES
+const CATEGORY_IMAGES = {
+  pothole: [
+    'https://ichef.bbci.co.uk/ace/standard/2048/cpsprodpb/9f16/live/d0f412a0-e492-11f0-a06d-4903df3f724c.jpg', // Pothole
+    'https://images.ctfassets.net/pjshm78m9jt4/41wm4pjnpt6y8w4L8jeeVU/642bdb9aba659a053394fc20d7fdc841/Screenshot_2024-01-16_at_11.54.04.png?fm=jpg&fit=fill&w=650&h=366&q=80', // Pothole
+    'https://swikblog.com/wp-content/uploads/2026/01/potholes-england-300kb.jpg', // Broken road
+    'https://i.dailymail.co.uk/i/pix/2014/01/13/article-0-16BA04A1000005DC-741_636x382.jpg'  // Damaged road
+  ],
+  garbage: [
+    'https://images.timesnowhindi.com/photo/msid-154442109/154442109.jpg', // Garbage pile
+    'https://files.prokerala.com/news/photos/imgs/1024/garbage-dumped-on-a-delhi-road-on-june-22-2017-552993.jpg', // Trash bags
+    'https://static.toiimg.com/thumb/msid-70355131,imgsize-3998918,width-400,resizemode-4/70355131.jpg', // Waste
+    'https://assets.thehansindia.com/h-upload/feeds/2019/04/21/166713-anjaiah-nagar-residents.jpg'  // Street garbage
+  ],
+  water_leakage: [
+    'https://www.bluebot.com/wp-content/uploads/2022/02/Under-ground-water-leak-bluebot-smart-water-meter.jpg', // Water pipe
+    'https://www.dansdrainsanddigs.com/wp-content/uploads/2024/05/in-blog-photo-57.jpg', // Street water
+    'https://cleanandclearplumbing.com.au/wp-content/uploads/2026/03/burst-pipe.png', // Leaking water
+    'https://www.queenslandcountrylife.com.au/images/transform/v1/crop/frm/UdNE97Se3RqCx9C2EmYtgx/2c482c91-b64e-4596-9488-40b25f6e174a.jpg/r0_0_1599_1204_w1200_h678_fmax.jpg'  // Water on road
+  ],
+  other: [
+    'https://c2.staticflickr.com/4/3618/3383458014_d7850bddb2_b.jpg', // Broken streetlight
+    'https://media.istockphoto.com/id/1444899925/photo/broken-park-bench-vandals-broke-a-park-bench.jpg?s=170667a&w=0&k=20&c=7DUvpk_9ZQ6YLBYOOrS4Bt3iPA0DiyOakEnGujdxgr0=', // Public infra
+    'https://media.istockphoto.com/id/157481087/photo/fallen-tree-blocking-road.jpg?s=612x612&w=0&k=20&c=PxqjhdPyNVtCIOhA8U-wWKH42wMvJvnuWzhRRXML4Fw=', // Broken area
+    'https://5.imimg.com/data5/ANDROID/Default/2023/3/293773582/OO/NW/YC/35477174/product-jpeg-500x500.jpg'  // Misc issue
+  ]
+};
+
+// After Images (Proof of Work - Clean Roads, Clean Streets, Dry Roads)
+const AFTER_IMAGES = {
+  roads: 'https://www.abc4.com/wp-content/uploads/sites/4/2026/04/0202PH_MXF_16.52.43.20.jpg?w=900', // Smooth road
+  sanitation: 'https://static.toiimg.com/photo/imgsize-185265,msid-65759780/65759780.jpg', // Clean street
+  water: 'https://www.shutterstock.com/image-photo/sewer-repair-place-drain-ground-600nw-2676292219.jpg', // Dry road
+  other: 'https://c8.alamy.com/comp/2KJG4XW/an-old-lady-standing-in-front-of-wooden-benches-in-the-park-on-a-sunny-day-2KJG4XW.jpg'
+};
+
 const LOCATIONS = [
   { address: 'Connaught Place, New Delhi', coordinates: [77.2167, 28.6315] },
   { address: 'Karol Bagh, New Delhi', coordinates: [77.1900, 28.6517] },
@@ -17,15 +52,7 @@ const LOCATIONS = [
   { address: 'Mayur Vihar, New Delhi', coordinates: [77.2900, 28.6000] }
 ];
 
-// Updated Images matching your 4 categories
-const IMAGES = {
-  pothole: 'https://images.unsplash.com/photo-1515162816999-a0c47dc192f7?w=600',
-  garbage: 'https://images.unsplash.com/photo-1530587191325-3db32d826c18?w=600',
-  water_leakage: 'https://images.unsplash.com/photo-1584285405429-136bf988919c?w=600',
-  other: 'https://images.unsplash.com/photo-1509024644558-2f56ce76c490?w=600',
-  before: 'https://images.unsplash.com/photo-1589939705384-5185137a7f0f?w=600',
-  after: 'https://images.unsplash.com/photo-1590093804680-4d6b8b8b8b8b?w=600'
-};
+const CITIZENS = ['Rahul Sharma', 'Meenal Joshi', 'Prerna Gupta', 'Rishabh Verma', 'Aarav Singh', 'Neha Verma', 'Karan Malhotra', 'Simran Kaur'];
 
 const generateSid = () => 'SM' + Math.random().toString(16).substr(2, 32);
 const randomItem = (arr) => arr[Math.floor(Math.random() * arr.length)];
@@ -34,199 +61,174 @@ const randomDate = (daysAgo) => new Date(Date.now() - Math.random() * daysAgo * 
 const seedDB = async () => {
   try {
     await mongoose.connect(process.env.MONGODB_URI);
-    console.log('Connected to MongoDB');
+    console.log('✅ Connected to MongoDB');
 
-    // 1. Clear existing data
     await User.deleteMany();
     await Complaint.deleteMany();
-    console.log('Cleared existing data');
+    console.log('🗑️  Cleared existing data');
 
-    // 2. Create Users
-    const admin = await User.create({
-      name: 'Super Admin', email: 'admin@nagardrishti.com', phone: '9000000001',
-      password: 'password123', role: 'super_admin'
-    });
+    // Create Users
+    await User.create({ name: 'Super Admin', email: 'admin@nagardrishti.com', phone: '9000000001', password: 'password123', role: 'super_admin' });
+    await User.create({ name: 'Roads Admin', email: 'roads@nagardrishti.com', phone: '9000000002', password: 'password123', role: 'dept_admin', department: 'roads' });
+    await User.create({ name: 'Sanitation Admin', email: 'sanitation@nagardrishti.com', phone: '9000000003', password: 'password123', role: 'dept_admin', department: 'sanitation' });
+    await User.create({ name: 'Water Admin', email: 'water@nagardrishti.com', phone: '9000000004', password: 'password123', role: 'dept_admin', department: 'water' });
 
-    const roadsAdmin = await User.create({
-      name: 'Roads Admin', email: 'roads@nagardrishti.com', phone: '9000000002',
-      password: 'password123', role: 'dept_admin', department: 'roads'
-    });
+    const workerAmit = await User.create({ name: 'Amit (North)', email: 'amit@nagardrishti.com', phone: '9111111111', password: 'password123', role: 'field_worker', department: 'roads', zone: 'North Zone' });
+    const workerRahul = await User.create({ name: 'Rahul (South)', email: 'rahul@nagardrishti.com', phone: '9222222222', password: 'password123', role: 'field_worker', department: 'roads', zone: 'South Zone' });
+    const workerPriya = await User.create({ name: 'Priya (Sanitation)', email: 'priya@nagardrishti.com', phone: '9333333333', password: 'password123', role: 'field_worker', department: 'sanitation', zone: 'Central Zone' });
+    const workerRavi = await User.create({ name: 'Ravi (Water)', email: 'ravi@nagardrishti.com', phone: '9444444444', password: 'password123', role: 'field_worker', department: 'water', zone: 'West Zone' });
 
-    const sanAdmin = await User.create({
-      name: 'Sanitation Admin', email: 'sanitation@nagardrishti.com', phone: '9000000003',
-      password: 'password123', role: 'dept_admin', department: 'sanitation'
-    });
+    const allWorkers = [workerAmit, workerRahul, workerPriya, workerRavi];
+    console.log('👥 Created Super Admin, Dept Admins, and Field Workers');
 
-    const waterAdmin = await User.create({
-      name: 'Water Admin', email: 'water@nagardrishti.com', phone: '9000000004',
-      password: 'password123', role: 'dept_admin', department: 'water'
-    });
-
-    const otherAdmin = await User.create({
-      name: 'Other Dept Admin', email: 'other@nagardrishti.com', phone: '9000000005',
-      password: 'password123', role: 'dept_admin', department: 'other'
-    });
-
-    // Field Workers
-    const workerAmit = await User.create({
-      name: 'Amit (North)', email: 'amit@nagardrishti.com', phone: '9111111111',
-      password: 'password123', role: 'field_worker', department: 'roads', zone: 'North Zone'
-    });
-
-    const workerRahul = await User.create({
-      name: 'Rahul (South)', email: 'rahul@nagardrishti.com', phone: '9222222222',
-      password: 'password123', role: 'field_worker', department: 'roads', zone: 'South Zone'
-    });
-
-    const workerPriya = await User.create({
-      name: 'Priya (Sanitation)', email: 'priya@nagardrishti.com', phone: '9333333333',
-      password: 'password123', role: 'field_worker', department: 'sanitation', zone: 'Central Zone'
-    });
-
-    const workerRavi = await User.create({
-      name: 'Ravi (Water)', email: 'ravi@nagardrishti.com', phone: '9444444444',
-      password: 'password123', role: 'field_worker', department: 'water', zone: 'West Zone'
-    });
-
-    const workerVikram = await User.create({
-      name: 'Vikram (Other)', email: 'vikram@nagardrishti.com', phone: '9555555555',
-      password: 'password123', role: 'field_worker', department: 'other', zone: 'East Zone'
-    });
-
-    const allWorkers = [workerAmit, workerRahul, workerPriya, workerRavi, workerVikram];
-    console.log('Created Super Admin, 4 Dept Admins, and 5 Field Workers');
-
-    // 3. Generate 50 Random Complaintss
+    // Generate Complaints
     const categories = ['pothole', 'garbage', 'water_leakage', 'other'];
     const statuses = ['pending', 'verified', 'assigned', 'in_progress', 'resolved', 'closed', 'rejected'];
-    
     const complaints = [];
 
-    for (let i = 0; i < 50; i++) {
+    for (let i = 0; i < 60; i++) {
       const category = randomItem(categories);
+      const locationData = randomItem(LOCATIONS);
+      
+      const lng = locationData.coordinates[0] + (Math.random() - 0.5) * 0.02;
+      const lat = locationData.coordinates[1] + (Math.random() - 0.5) * 0.02;
+
       let department = 'other';
       if (category === 'pothole') department = 'roads';
       else if (category === 'garbage') department = 'sanitation';
       else if (category === 'water_leakage') department = 'water';
-      
-      const locationData = randomItem(LOCATIONS);
-      // Add slight randomness to coordinates so they don't overlap exactly
-      const lng = locationData.coordinates[0] + (Math.random() - 0.5) * 0.02;
-      const lat = locationData.coordinates[1] + (Math.random() - 0.5) * 0.02;
 
-      const status = randomItem(statuses);
-      // Spread complaints over the last 7 days for the Trend Chart
+      const severity = randomItem(['low', 'medium', 'high']);
+      let priority = 3;
+      if (severity === 'high') priority = 5;
+      else if (severity === 'medium') priority = 3;
+      else if (severity === 'low') priority = 1;
+
+      let status = randomItem(statuses);
+      if (category === 'other') {
+        status = randomItem(['pending', 'verified', 'rejected']);
+      }
+
       const reportedAt = randomDate(7); 
       
+      const randomImage = randomItem(CATEGORY_IMAGES[category]);
+      
       const complaintData = {
-        citizenName: randomItem(['Rahul', 'Meenal', 'Prerna', 'Rishabh', 'Aarav', 'Neha', 'Karan', 'Simran']),
+        citizenName: randomItem(CITIZENS),
         citizenPhone: `+9199${Math.floor(10000000 + Math.random() * 90000000)}`,
-        description: `Issue regarding ${category.replace('_', ' ')} found at ${locationData.address}`,
+        description: `${category.replace('_', ' ')} issue found near ${locationData.address}`,
         location: { type: 'Point', coordinates: [lng, lat] },
         address: locationData.address,
-        imageUrl: IMAGES[category],
+        imageUrl: randomImage,
         category: category,
         department: department,
-        priority: randomItem([1, 2, 3, 4, 5]),
+        priority: priority,
         reportedAt: reportedAt,
         whatsappMessageSid: generateSid(),
         aiAnalysis: {
           isValid: status !== 'rejected',
           category: category,
-          confidence: Number((Math.random() * 0.4 + 0.6).toFixed(2)),
-          severity: randomItem(['low', 'medium', 'high']),
+          confidence: Number((Math.random() * 0.3 + 0.7).toFixed(2)),
+          severity: severity,
           descriptionAnalysis: { sentiment: 'negative', keywords: [category.split('_')[0], 'issue'] },
           duplicateOf: null
         },
         status: status,
-        statusHistory: [
-          { status: 'pending', timestamp: reportedAt, note: 'Complaint received via WhatsApp' }
-        ]
+        statusHistory: []
       };
 
-      // Setup lifecycle based on status
-      if (status !== 'pending' && status !== 'rejected') {
-        complaintData.statusHistory.push({ status: 'verified', timestamp: new Date(reportedAt.getTime() + 60000), note: 'AI verified.' });
-      }
-
-      if (['assigned', 'in_progress', 'resolved', 'closed'].includes(status)) {
-        const deptWorkers = allWorkers.filter(w => w.department === department);
-        const assignedWorker = deptWorkers.length > 0 ? randomItem(deptWorkers) : randomItem(allWorkers);
-        
-        complaintData.assignedTo = assignedWorker._id;
-        complaintData.statusHistory.push({ status: 'assigned', timestamp: new Date(reportedAt.getTime() + 3600000), note: `Assigned to ${assignedWorker.name}` });
-      }
-
-      if (['in_progress', 'resolved', 'closed'].includes(status)) {
-        complaintData.beforeImage = IMAGES.before;
-        complaintData.statusHistory.push({ status: 'in_progress', timestamp: new Date(reportedAt.getTime() + 7200000), note: 'Work started.' });
-      }
-
-      if (['resolved', 'closed'].includes(status)) {
-        complaintData.afterImage = IMAGES.after;
-        complaintData.workNote = 'Issue resolved and area cleaned.';
-        complaintData.resolvedAt = new Date(reportedAt.getTime() + 86400000);
-        complaintData.statusHistory.push({ status: 'resolved', timestamp: complaintData.resolvedAt, note: 'Work completed.' });
-      }
-
-      if (status === 'closed') {
-        complaintData.resolvedBy = `${department.toUpperCase()} Admin`;
-        complaintData.resolutionNote = 'Verified the after photo. Good work.';
-        complaintData.statusHistory.push({ status: 'closed', timestamp: new Date(reportedAt.getTime() + 90000000), note: 'Complaint closed by admin.' });
-      }
+      let currentTime = new Date(reportedAt);
+      complaintData.statusHistory.push({ status: 'pending', timestamp: currentTime, note: 'Complaint received via WhatsApp' });
 
       if (status === 'rejected') {
-        complaintData.statusHistory.push({ status: 'rejected', timestamp: new Date(reportedAt.getTime() + 60000), note: 'AI rejected: Image and Text do not match.' });
-      }
+        complaintData.statusHistory.push({ status: 'rejected', timestamp: new Date(currentTime.getTime() + 60000), note: 'AI verification failed: Image and text mismatch.' });
+      } 
+      else if (status !== 'pending') {
+        currentTime = new Date(currentTime.getTime() + 60000);
+        complaintData.statusHistory.push({ status: 'verified', timestamp: currentTime, note: 'AI verified. Routed to department.' });
 
+        if (['assigned', 'in_progress', 'resolved', 'closed'].includes(status)) {
+          if (department !== 'other') {
+            const deptWorkers = allWorkers.filter(w => w.department === department);
+            const assignedWorker = deptWorkers.length > 0 ? randomItem(deptWorkers) : randomItem(allWorkers);
+            
+            currentTime = new Date(currentTime.getTime() + 3600000);
+            complaintData.assignedTo = assignedWorker._id;
+            complaintData.statusHistory.push({ status: 'assigned', timestamp: currentTime, note: `Assigned to field worker: ${assignedWorker.name}` });
+
+            if (['in_progress', 'resolved', 'closed'].includes(status)) {
+              currentTime = new Date(currentTime.getTime() + 7200000);
+              complaintData.beforeImage = randomImage;
+              complaintData.statusHistory.push({ status: 'in_progress', timestamp: currentTime, note: 'Field team arrived and started work.' });
+
+              if (['resolved', 'closed'].includes(status)) {
+                currentTime = new Date(currentTime.getTime() + 86400000);
+                complaintData.afterImage = AFTER_IMAGES[department] || AFTER_IMAGES.other;
+                complaintData.workNote = 'Issue successfully resolved. Area cleaned and inspected.';
+                complaintData.resolvedAt = currentTime;
+                complaintData.statusHistory.push({ status: 'resolved', timestamp: currentTime, note: 'Work completed. Uploaded proof.' });
+
+                if (status === 'closed') {
+                  currentTime = new Date(currentTime.getTime() + 3600000); 
+                  complaintData.resolvedBy = `${department.toUpperCase()} Admin`;
+                  complaintData.resolutionNote = 'Verified the proof. Good work by the field team.';
+                  complaintData.statusHistory.push({ status: 'closed', timestamp: currentTime, note: 'Admin verified and closed the complaint.' });
+                }
+              }
+            }
+          }
+        }
+      }
       complaints.push(complaintData);
     }
 
     const insertedComplaints = await Complaint.insertMany(complaints);
-    console.log(`Inserted ${insertedComplaints.length} random complaints`);
+    console.log(`📝 Inserted ${insertedComplaints.length} highly accurate complaints`);
 
-    // 4. Create Duplicate Clusters
-    console.log('Generating duplicate clusters...');
+    // Create Duplicates
+    const validParents = insertedComplaints.filter(c => c.category !== 'other');
     
-    for (let i = 0; i < 2; i++) {
-      const parent = insertedComplaints[i * 15]; 
+    for (let i = 0; i < 3; i++) {
+      const parent = validParents[i * 5]; 
+      if (!parent) continue;
       
       for (let j = 0; j < 2; j++) {
+        const dupReportedAt = new Date(parent.reportedAt.getTime() + 1800000);
         const duplicate = await Complaint.create({
-          citizenName: `Citizen ${j}`,
+          citizenName: randomItem(CITIZENS),
           citizenPhone: `+9188${Math.floor(10000000 + Math.random() * 90000000)}`,
-          description: `Same issue: ${parent.description}`,
+          description: `Same issue as someone else: ${parent.description}`,
           location: { type: 'Point', coordinates: [parent.location.coordinates[0] + 0.0001, parent.location.coordinates[1] - 0.0001] },
           address: parent.address,
           imageUrl: parent.imageUrl,
           category: parent.category,
           department: parent.department,
           priority: parent.priority,
-          reportedAt: new Date(parent.reportedAt.getTime() + 3600000),
+          reportedAt: dupReportedAt,
           whatsappMessageSid: generateSid(),
           aiAnalysis: {
             isValid: true,
             category: parent.category,
-            confidence: 0.85,
-            severity: parent.priority > 3 ? 'high' : 'medium',
+            confidence: 0.89,
+            severity: parent.aiAnalysis.severity,
             descriptionAnalysis: { sentiment: 'negative', keywords: [parent.category] },
             duplicateOf: parent._id
           },
           status: 'duplicate',
           statusHistory: [
-            { status: 'pending', timestamp: new Date(), note: 'Complaint received' },
-            { status: 'duplicate', timestamp: new Date(), note: `Marked as duplicate of ${parent._id}` }
+            { status: 'pending', timestamp: dupReportedAt, note: 'Complaint received' },
+            { status: 'duplicate', timestamp: new Date(dupReportedAt.getTime() + 60000), note: `Marked as duplicate of ${parent._id}` }
           ]
         });
 
         await Complaint.findByIdAndUpdate(parent._id, {
           $inc: { duplicateCount: 1 },
-          $push: { duplicateReports: { complaintId: duplicate._id, reportedAt: new Date() } }
+          $push: { duplicateReports: { complaintId: duplicate._id, reportedAt: dupReportedAt } }
         });
       }
     }
 
-    console.log('🎉 Seeding Completed! 50+ Complaints and multiple users generated.');
+    console.log('🎉 Seeding Completed! Database is now fully populated with logic-accurate real-world data.');
     process.exit();
 
   } catch (error) {
