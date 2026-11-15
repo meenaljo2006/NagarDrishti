@@ -43,6 +43,15 @@ exports.assignComplaint = async (req, res) => {
       `*Complaint Assigned*\n━━━━━━━━━━━━━━━━\nID: ${complaint._id}\nYour complaint has been accepted by the ${complaint.department} department.\n\n👷 Team assigned: ${fieldWorker.name}\n📍 Team will reach your location soon.`
     );
 
+    // Notify Duplicate Citizens
+    const duplicates = await Complaint.find({ 'aiAnalysis.duplicateOf': complaint._id });
+    for (const dup of duplicates) {
+        await sendWhatsAppMessage(
+          dup.citizenPhone,
+          `*Update on your reported issue*\n━━━━━━━━━━━━━━━━\nA team has been assigned to resolve the issue you reported.\n\n👷 Team assigned: ${fieldWorker.name}`
+        );
+    }
+
     res.json({
       success: true,
       message: `Complaint assigned to ${fieldWorker.name}`,

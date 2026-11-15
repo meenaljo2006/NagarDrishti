@@ -46,6 +46,15 @@ exports.startWork = async (req, res) => {
       `*Work Started*\n━━━━━━━━━━━━━━━━\nID: ${complaint._id}\nThe field team has arrived and started working on your complaint.\n\n⏱ Expected completion: 2-3 hours.`
     );
 
+    // Notify Duplicate Citizens
+    const duplicates = await Complaint.find({ 'aiAnalysis.duplicateOf': complaint._id });
+    for (const dup of duplicates) {
+        await sendWhatsAppMessage(
+          dup.citizenPhone,
+          `*Update on your reported issue*\n━━━━━━━━━━━━━━━━\nWork has started on the issue you reported.`
+        );
+    }
+
     res.json({ success: true, message: 'Work started', data: complaint });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -97,6 +106,15 @@ exports.resolveComplaint = async (req, res) => {
       complaint.citizenPhone,
       `*Work Completed*\n━━━━━━━━━━━━━━━━\nID: ${complaint._id}\nThe field team has completed the work.\n\n Note: ${complaint.workNote}\n\nWaiting for Admin verification.`
     );
+
+    // Notify Duplicate Citizens
+    const duplicates = await Complaint.find({ 'aiAnalysis.duplicateOf': complaint._id });
+    for (const dup of duplicates) {
+        await sendWhatsAppMessage(
+          dup.citizenPhone,
+          `*Update on your reported issue*\n━━━━━━━━━━━━━━━━\nThe field team has completed the work.\n\n Note: ${complaint.workNote}\n\nWaiting for Admin verification.`
+        );
+    }
 
     res.json({ success: true, message: 'Complaint resolved and submitted for verification', data: complaint });
   } catch (error) {
