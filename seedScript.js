@@ -3,7 +3,7 @@ const mongoose = require('mongoose');
 const User = require('./src/models/User');
 const Complaint = require('./src/models/Complaint');
 
-// 1. VERIFIED & RELIABLE CIVIC ISSUE IMAGES
+// 1. Verified & Reliable Civic Issue Images
 const CATEGORY_IMAGES = {
   pothole: [
     'https://ichef.bbci.co.uk/ace/standard/2048/cpsprodpb/9f16/live/d0f412a0-e492-11f0-a06d-4903df3f724c.jpg', // Pothole
@@ -56,7 +56,6 @@ const CITIZENS = ['Rahul Sharma', 'Meenal Joshi', 'Prerna Gupta', 'Rishabh Verma
 
 const generateSid = () => 'SM' + Math.random().toString(16).substr(2, 32);
 const randomItem = (arr) => arr[Math.floor(Math.random() * arr.length)];
-const randomDate = (daysAgo) => new Date(Date.now() - Math.random() * daysAgo * 24 * 60 * 60 * 1000);
 
 const seedDB = async () => {
   try {
@@ -65,28 +64,40 @@ const seedDB = async () => {
 
     await User.deleteMany();
     await Complaint.deleteMany();
-    console.log('🗑️  Cleared existing data');
+    console.log('🗑️  Cleared existing data. Starting fresh generation...');
 
-    // Create Users
+    // STEP 1: CREATE USERS
     await User.create({ name: 'Super Admin', email: 'admin@nagardrishti.com', phone: '9000000001', password: 'password123', role: 'super_admin' });
     await User.create({ name: 'Roads Admin', email: 'roads@nagardrishti.com', phone: '9000000002', password: 'password123', role: 'dept_admin', department: 'roads' });
     await User.create({ name: 'Sanitation Admin', email: 'sanitation@nagardrishti.com', phone: '9000000003', password: 'password123', role: 'dept_admin', department: 'sanitation' });
     await User.create({ name: 'Water Admin', email: 'water@nagardrishti.com', phone: '9000000004', password: 'password123', role: 'dept_admin', department: 'water' });
 
-    const workerAmit = await User.create({ name: 'Amit (North)', email: 'amit@nagardrishti.com', phone: '9111111111', password: 'password123', role: 'field_worker', department: 'roads', zone: 'North Zone' });
-    const workerRahul = await User.create({ name: 'Rahul (South)', email: 'rahul@nagardrishti.com', phone: '9222222222', password: 'password123', role: 'field_worker', department: 'roads', zone: 'South Zone' });
-    const workerPriya = await User.create({ name: 'Priya (Sanitation)', email: 'priya@nagardrishti.com', phone: '9333333333', password: 'password123', role: 'field_worker', department: 'sanitation', zone: 'Central Zone' });
-    const workerRavi = await User.create({ name: 'Ravi (Water)', email: 'ravi@nagardrishti.com', phone: '9444444444', password: 'password123', role: 'field_worker', department: 'water', zone: 'West Zone' });
+    const roadsWorkers = await User.insertMany([
+      { name: 'Amit (North)', email: 'amit@nagardrishti.com', phone: '9111111111', password: 'password123', role: 'field_worker', department: 'roads', zone: 'North Zone' },
+      { name: 'Rahul (South)', email: 'rahul@nagardrishti.com', phone: '9222222222', password: 'password123', role: 'field_worker', department: 'roads', zone: 'South Zone' },
+      { name: 'Suresh (East)', email: 'suresh@nagardrishti.com', phone: '9333333331', password: 'password123', role: 'field_worker', department: 'roads', zone: 'East Zone' }
+    ]);
 
-    const allWorkers = [workerAmit, workerRahul, workerPriya, workerRavi];
-    console.log('👥 Created Super Admin, Dept Admins, and Field Workers');
+    const sanWorkers = await User.insertMany([
+      { name: 'Priya (Sanitation)', email: 'priya@nagardrishti.com', phone: '9333333333', password: 'password123', role: 'field_worker', department: 'sanitation', zone: 'Central Zone' },
+      { name: 'Kavita (Sanitation)', email: 'kavita@nagardrishti.com', phone: '9333333334', password: 'password123', role: 'field_worker', department: 'sanitation', zone: 'North Zone' }
+    ]);
 
-    // Generate Complaints
+    const waterWorkers = await User.insertMany([
+      { name: 'Ravi (Water)', email: 'ravi@nagardrishti.com', phone: '9444444444', password: 'password123', role: 'field_worker', department: 'water', zone: 'West Zone' },
+      { name: 'Manoj (Water)', email: 'manoj@nagardrishti.com', phone: '9444444445', password: 'password123', role: 'field_worker', department: 'water', zone: 'East Zone' }
+    ]);
+
+    const allWorkers = [...roadsWorkers, ...sanWorkers, ...waterWorkers];
+    console.log('👥 Users created successfully');
+
+    // STEP 2: GENERATE 150 COMPLAINTS
     const categories = ['pothole', 'garbage', 'water_leakage', 'other'];
     const statuses = ['pending', 'verified', 'assigned', 'in_progress', 'resolved', 'closed', 'rejected'];
     const complaints = [];
 
-    for (let i = 0; i < 60; i++) {
+    // Loop runs 150 times to generate 150 complaints
+    for (let i = 0; i < 150; i++) {
       const category = randomItem(categories);
       const locationData = randomItem(LOCATIONS);
       
@@ -99,17 +110,15 @@ const seedDB = async () => {
       else if (category === 'water_leakage') department = 'water';
 
       const severity = randomItem(['low', 'medium', 'high']);
-      let priority = 3;
-      if (severity === 'high') priority = 5;
-      else if (severity === 'medium') priority = 3;
-      else if (severity === 'low') priority = 1;
+      let priority = severity === 'high' ? 5 : (severity === 'medium' ? 3 : 1);
 
       let status = randomItem(statuses);
-      if (category === 'other') {
-        status = randomItem(['pending', 'verified', 'rejected']);
-      }
+      if (category === 'other') status = randomItem(['pending', 'verified', 'rejected']);
 
-      const reportedAt = randomDate(7); 
+      // FIX: Force even distribution across 7 days (i % 7)
+      const daysAgo = i % 7; 
+      // This creates a timestamp: Today - (0 to 6 days) - (random hours/minutes)
+      const reportedAt = new Date(Date.now() - (daysAgo * 24 * 60 * 60 * 1000) - (Math.random() * 24 * 60 * 60 * 1000));
       
       const randomImage = randomItem(CATEGORY_IMAGES[category]);
       
@@ -183,21 +192,22 @@ const seedDB = async () => {
     }
 
     const insertedComplaints = await Complaint.insertMany(complaints);
-    console.log(`📝 Inserted ${insertedComplaints.length} highly accurate complaints`);
+    console.log(`📝 Inserted ${insertedComplaints.length} complaints perfectly distributed over 7 days!`);
 
-    // Create Duplicates
-    const validParents = insertedComplaints.filter(c => c.category !== 'other');
-    
-    for (let i = 0; i < 3; i++) {
-      const parent = validParents[i * 5]; 
-      if (!parent) continue;
+    // STEP 3: CREATE DUPLICATES
+    const potentialParents = insertedComplaints.filter(c => ['resolved', 'closed'].includes(c.status) && c.category !== 'other');
+    const validParents = potentialParents.length >= 5 ? potentialParents : insertedComplaints.filter(c => c.category !== 'other');
+
+    for (let i = 0; i < 5; i++) { 
+      if (!validParents[i * 10]) continue;
+      const parent = validParents[i * 10];
       
       for (let j = 0; j < 2; j++) {
         const dupReportedAt = new Date(parent.reportedAt.getTime() + 1800000);
-        const duplicate = await Complaint.create({
+        await Complaint.create({
           citizenName: randomItem(CITIZENS),
           citizenPhone: `+9188${Math.floor(10000000 + Math.random() * 90000000)}`,
-          description: `Same issue as someone else: ${parent.description}`,
+          description: `Same issue: ${parent.description}`,
           location: { type: 'Point', coordinates: [parent.location.coordinates[0] + 0.0001, parent.location.coordinates[1] - 0.0001] },
           address: parent.address,
           imageUrl: parent.imageUrl,
@@ -207,12 +217,8 @@ const seedDB = async () => {
           reportedAt: dupReportedAt,
           whatsappMessageSid: generateSid(),
           aiAnalysis: {
-            isValid: true,
-            category: parent.category,
-            confidence: 0.89,
-            severity: parent.aiAnalysis.severity,
-            descriptionAnalysis: { sentiment: 'negative', keywords: [parent.category] },
-            duplicateOf: parent._id
+            isValid: true, category: parent.category, confidence: 0.89, severity: parent.aiAnalysis.severity,
+            descriptionAnalysis: { sentiment: 'negative', keywords: [parent.category] }, duplicateOf: parent._id
           },
           status: 'duplicate',
           statusHistory: [
@@ -223,12 +229,12 @@ const seedDB = async () => {
 
         await Complaint.findByIdAndUpdate(parent._id, {
           $inc: { duplicateCount: 1 },
-          $push: { duplicateReports: { complaintId: duplicate._id, reportedAt: dupReportedAt } }
+          $push: { duplicateReports: { complaintId: parent._id, reportedAt: dupReportedAt } }
         });
       }
     }
 
-    console.log('🎉 Seeding Completed! Database is now fully populated with logic-accurate real-world data.');
+    console.log('🎉 Seeding Completed Successfully! Total complaints: ' + (150 + 10));
     process.exit();
 
   } catch (error) {
