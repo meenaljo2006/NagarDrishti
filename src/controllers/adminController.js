@@ -200,7 +200,7 @@ exports.getFieldTeam = async (req, res) => {
     const workers = await User.find({ 
       role: 'field_worker', 
       department: req.user.department 
-    }).select('name zone phone');
+    }).select('name zone phone email');
 
     res.json({ success: true, count: workers.length, data: workers });
   } catch (error) {
